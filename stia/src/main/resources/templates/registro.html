@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro - STIA</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f1f5f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        h2 { color: #1e293b; margin-bottom: 1.5rem; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #1d4ed8; }
+        .hidden { display: none; }
+        label { display: block; text-align: left; margin-bottom: 5px; font-weight: 500; color: #64748b; font-size: 0.9rem;}
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Crear Usuario Nuevo</h2>
+
+    <form action="/registro" method="post">
+
+        <label>Usuario:</label>
+        <input type="text" name="username" placeholder="Ej: juan.perez" required>
+
+        <label>Contraseña:</label>
+        <input type="password" name="password" placeholder="******" required>
+
+        <label>Correo Electrónico:</label>
+        <input type="email" name="email" placeholder="nombre@correo.com" required>
+
+        <label>Selecciona Rol:</label>
+        <select name="rol" id="selectorRol" onchange="verificarRol()">
+            <option value="ESTUDIANTE">Estudiante</option>
+            <option value="DOCENTE">Docente</option>
+            <option value="PADRE">Padre de Familia</option>
+        </select>
+
+        <div id="divHijo" class="hidden" style="background: #eff6ff; padding: 10px; border-radius: 6px; margin-bottom: 15px; border: 1px dashed #2563eb;">
+            <label style="color: #1e40af;">Selecciona a tu Hijo:</label>
+            <select name="hijoId">
+                <option value="" disabled selected>-- Buscar Alumno --</option>
+                <option th:each="est : ${listaEstudiantes}"
+                        th:value="${est.id}"
+                        th:text="${est.username}">
+                </option>
+            </select>
+            <small style="color: #64748b; font-size: 0.75em;">
+                Se vinculará tu correo para recibir sus notas.
+            </small>
+        </div>
+
+        <button type="submit">Registrar</button>
+    </form>
+
+    <p style="margin-top: 20px; font-size: 0.9em;">
+        <a href="/login" style="color: #2563eb; text-decoration: none;">¿Ya tienes cuenta? Inicia sesión</a>
+    </p>
+</div>
+
+<script>
+    function verificarRol() {
+        const rol = document.getElementById('selectorRol').value;
+        const divHijo = document.getElementById('divHijo');
+
+        if (rol === 'PADRE') {
+            divHijo.classList.remove('hidden');
+        } else {
+            divHijo.classList.add('hidden');
+        }
+    }
+</script>
+
+</body>
+</html>

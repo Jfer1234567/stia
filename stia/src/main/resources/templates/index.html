@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>STIA - Aula Virtual</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; }
+
+        /* Navbar */
+        .navbar { background: #1e293b; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .role-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-left: 10px; }
+        .role-docente { background: #fbbf24; color: black; }
+        .role-estudiante { background: #3b82f6; color: white; }
+        .role-padre { background: #10b981; color: white; }
+
+        /* Contenedor */
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; display: grid; gap: 30px; }
+
+        /* Tarjetas */
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; color: var(--primary); }
+
+        /* Tablas */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 600; }
+
+        /* Botones */
+        .btn { cursor: pointer; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; text-decoration: none; font-size: 0.9em; display: inline-block;}
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-green { background: #16a34a; color: white; }
+        .btn-purple { background: #9333ea; color: white; }
+        .btn-orange { background: #f59e0b; color: white; }
+        .btn-gray { background: #64748b; color: white; }
+
+        /* Buscador Estilizado */
+        .search-container { position: relative; margin-bottom: 15px; max-width: 400px; }
+        .search-container i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+        .search-input {
+            width: 100%; padding: 10px 15px 10px 40px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; transition: 0.3s;
+        }
+        .search-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+        /* Modal del Profesor */
+        #modalAnalisis { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; padding: 20px; border-radius: 10px; max-width: 500px; width: 90%; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <div style="display: flex; align-items: center;">
+        <span style="font-size: 1.2rem; font-weight: bold;">STIA</span>
+        <span class="role-badge role-docente" sec:authorize="hasRole('DOCENTE')">PROFESOR</span>
+        <span class="role-badge role-estudiante" sec:authorize="hasRole('ESTUDIANTE')">ALUMNO</span>
+        <span class="role-badge role-padre" sec:authorize="hasRole('PADRE')">PADRE</span>
+        <span style="margin-left: 15px;">Hola, <span sec:authentication="name">User</span></span>
+    </div>
+    <form th:action="@{/logout}" method="post" style="margin:0;">
+        <button type="submit" class="btn btn-gray" style="background: #ef4444;">Salir</button>
+    </form>
+</div>
+
+<div class="container">
+
+    <div sec:authorize="hasRole('DOCENTE')">
+
+        <div th:if="${param.exito}" style="background: #dcfce7; color: #166534; padding: 10px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
+            ✅ Operación realizada con éxito (Reporte enviado o Nota guardada).
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
+                <h2 style="border: none; margin: 0;">🎓 Gestión de Aula y Reportes</h2>
+            </div>
+
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" id="buscadorAlumnos" class="search-input" onkeyup="filtrarAlumnos()" placeholder="Buscar alumno por nombre...">
+            </div>
+
+            <table th:if="${not #lists.isEmpty(alumnos)}">
+                <thead>
+                <tr>
+                    <th style="width: 15%;">Alumno</th>
+                    <th style="width: 30%;">Entregas (PDFs)</th>
+                    <th style="width: 25%;">Calificar</th>
+                    <th style="width: 30%;">Acciones y Reportes</th> </tr>
+                </thead>
+                <tbody id="tablaAlumnosBody">
+                <tr th:each="alumno : ${alumnos}">
+                    <td style="font-weight: bold; color: #1e293b;" th:text="${alumno.username}">Juan</td>
+
+                    <td>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            <li th:each="entrega : ${mapaEntregas.get(alumno.id)}" style="margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 5px;">
+                                <div style="font-weight: 500;" th:text="${entrega.nombreArchivo}">Tarea.pdf</div>
+                                <div style="margin-top: 4px;">
+                                    <a th:href="@{'/entrega/descargar/' + ${entrega.id}}" target="_blank" class="btn btn-gray" style="font-size: 0.7em;">👁️ Ver PDF</a>
+                                    <button th:onclick="'analizarIA(' + ${entrega.id} + ')'" class="btn btn-purple" style="font-size: 0.7em;">🤖 Analizar</button>
+                                </div>
+                            </li>
+                            <span th:if="${#lists.isEmpty(mapaEntregas.get(alumno.id))}" style="color:#94a3b8; font-style: italic;">Sin entregas</span>
+                        </ul>
+                    </td>
+
+                    <td>
+                        <form action="/profesor/calificar" method="post" style="display: flex; flex-direction: column; gap: 5px;">
+                            <input type="hidden" name="estudianteId" th:value="${alumno.id}">
+
+                            <select name="curso" required style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+                                <option value="" disabled selected>Curso...</option>
+                                <option value="Matemática">Matemática</option>
+                                <option value="Comunicación">Comunicación</option>
+                                <option value="Ciencia y Tecnología">Ciencia y Tecnología</option>
+                                <option value="Personal Social">Personal Social</option>
+                            </select>
+
+                            <div style="display: flex; gap: 5px;">
+                                <input type="number" name="nota" placeholder="0-20" style="width: 60px; padding: 5px;" min="0" max="20" required>
+                                <button type="submit" class="btn btn-green">✔</button>
+                            </div>
+                        </form>
+                        <div style="font-size: 0.75em; color: #64748b; margin-top: 5px;">
+                            <strong>Notas:</strong>
+                            <div th:each="cal : ${mapaNotas.get(alumno.id)}">
+                                <span th:text="${cal.curso}"></span>: <b th:text="${cal.nota}"></b>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        <form action="/profesor/recomendar" method="post" style="display: flex; gap: 5px; margin-bottom: 10px;">
+                            <input type="hidden" name="estudianteId" th:value="${alumno.id}">
+                            <input type="text" name="mensaje" placeholder="Consejo para alumno..." required style="flex: 1; padding: 5px;">
+                            <button type="submit" class="btn btn-blue">Enviar</button>
+                        </form>
+
+                        <form action="/profesor/enviar-reporte" method="post">
+                            <input type="hidden" name="estudianteId" th:value="${alumno.id}">
+                            <button type="submit" class="btn btn-orange" style="width: 100%; font-size: 0.85em;">
+                                📧 Enviar Reporte a Padres
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <div sec:authorize="hasRole('ESTUDIANTE')">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="card">
+                <h2>📊 Mis Calificaciones</h2>
+                <table style="width: 100%;">
+                    <thead>
+                    <tr><th>Curso</th><th>Nota</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="nota : ${misNotas}">
+                        <td th:text="${nota.curso}">Matemática</td>
+                        <td style="font-size: 1.2em; font-weight: bold;" th:text="${nota.nota}">18</td>
+                        <td>
+                            <span th:if="${nota.nota >= 11}" style="color: green; font-weight: bold;">Aprobado</span>
+                            <span th:if="${nota.nota < 11}" style="color: red; font-weight: bold;">En Riesgo</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+                <p th:if="${#lists.isEmpty(misNotas)}" style="text-align: center; color: #888;">Sin notas registradas.</p>
+            </div>
+
+            <div class="card">
+                <h2>📤 Enviar Tarea</h2>
+                <form action="/alumno/entregar" method="post" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div style="border: 2px dashed #cbd5e1; padding: 20px; text-align: center; border-radius: 8px;">
+                        <input type="file" name="archivo" accept="application/pdf" required style="width: 100%;">
+                    </div>
+                    <button type="submit" class="btn btn-blue">Subir Archivo PDF</button>
+                </form>
+                <h3 style="font-size: 1rem; margin-top: 20px;">Historial de Envíos:</h3>
+                <ul>
+                    <li th:each="ent : ${misEntregas}" th:text="${ent.nombreArchivo} + ' (Enviado)'" style="color: #64748b;"></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2>💬 Recomendaciones del Profesor</h2>
+            <div th:each="rec : ${misRecomendaciones}" style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 15px; margin-bottom: 10px;">
+                <div style="font-weight: bold; color: #1e3a8a;">Mensaje del Docente:</div>
+                <div th:text="${rec.mensaje}">Sigue así.</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 20px; border-left: 5px solid #8b5cf6;">
+            <h2 style="color: #7c3aed;">📚 Retroalimentación y Recursos (Personalizado)</h2>
+            <p style="color: #64748b; font-size: 0.9em;">
+                Basado en tus notas actuales, hemos seleccionado estos materiales de refuerzo para ti:
+            </p>
+
+            <div th:if="${not #lists.isEmpty(recursosSugeridos)}" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                <div th:each="rec : ${recursosSugeridos}" style="background: #f5f3ff; padding: 15px; border-radius: 8px; border: 1px solid #ddd6fe;">
+                    <span style="font-size: 0.7em; font-weight: bold; background: #8b5cf6; color: white; padding: 2px 6px; border-radius: 4px;" th:text="${rec.curso}">Matemática</span>
+                    <span style="font-size: 0.7em; font-weight: bold; background: #ddd6fe; color: #5b21b6; padding: 2px 6px; border-radius: 4px;" th:text="${rec.nivel}">BÁSICO</span>
+
+                    <h4 style="margin: 10px 0; color: #4c1d95;" th:text="${rec.titulo}">Título del Recurso</h4>
+
+                    <a th:href="${rec.url}" target="_blank" class="btn" style="background: #7c3aed; color: white; display: block; text-align: center; font-size: 0.8em;">
+                        🔗 Ver Material
+                    </a>
+                </div>
+            </div>
+
+            <p th:if="${#lists.isEmpty(recursosSugeridos)}" style="text-align: center; padding: 20px; color: #94a3b8;">
+                Aún no tenemos suficientes datos para recomendarte material específico.
+            </p>
+        </div>
+
+        <div style="margin-top: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden;">
+            <div style="background: #2563eb; color: white; padding: 15px; font-weight: bold; display: flex; justify-content: space-between;">
+                <span>🤖 Tutor Virtual STIA (Adaptativo)</span>
+                <span style="font-size: 0.8em; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px;">En línea</span>
+            </div>
+            <div id="cajaChat" style="height: 300px; overflow-y: auto; padding: 20px; background: #f8fafc; display: flex; flex-direction: column; gap: 15px;">
+                <div style="align-self: flex-start; background: #e2e8f0; color: #1e293b; padding: 10px 15px; border-radius: 10px 10px 10px 0; max-width: 80%;">
+                    Hola. He analizado tu última tarea y tus notas. ¿En qué te puedo ayudar hoy?
+                </div>
+            </div>
+            <div style="padding: 15px; border-top: 1px solid #eee; display: flex; gap: 10px;">
+                <input type="text" id="inputPregunta" placeholder="Escribe aquí..." style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;" onkeypress="if(event.key === 'Enter') enviarPregunta()">
+                <button onclick="enviarPregunta()" class="btn btn-blue">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div sec:authorize="hasRole('PADRE')">
+        <div class="card" style="border-top: 4px solid #10b981;">
+            <h2 style="color: #047857;">👪 Portal de Padres de Familia</h2>
+            <p>Bienvenido. Aquí podrá ver el historial de reportes académicos enviados por los docentes.</p>
+
+            <table th:if="${not #lists.isEmpty(misReportes)}" style="margin-top: 20px;">
+                <thead>
+                <tr>
+                    <th>Fecha del Reporte</th>
+                    <th>Estudiante</th>
+                    <th>Contenido del Informe</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="rep : ${misReportes}">
+                    <td th:text="${#temporals.format(rep.fechaEnvio, 'dd/MM/yyyy HH:mm')}"></td>
+                    <td style="font-weight: bold;" th:text="${rep.estudiante.username}">Hijo</td>
+                    <td>
+                        <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; font-family: monospace; white-space: pre-wrap;" th:text="${rep.contenido}"></div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div th:if="${#lists.isEmpty(misReportes)}" style="text-align: center; padding: 40px; color: #94a3b8;">
+                <p style="font-size: 1.2em;">📭 No hay reportes disponibles.</p>
+                <p>Los profesores aún no han enviado notificaciones a este correo.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="modalAnalisis" style="display: none;">
+    <div class="modal-content">
+        <h3 style="margin-top: 0; color: #9333ea;">🤖 Análisis del Asistente IA</h3>
+        <div id="textoAnalisis" style="background: #f3f4f6; padding: 15px; border-radius: 6px; margin: 15px 0; min-height: 100px; white-space: pre-wrap;">Cargando...</div>
+        <button onclick="cerrarModal()" class="btn btn-gray" style="width: 100%;">Cerrar</button>
+    </div>
+</div>
+
+<script>
+    // --- NUEVO: FILTRO DE ALUMNOS (JAVASCRIPT PURO) ---
+    function filtrarAlumnos() {
+        const input = document.getElementById('buscadorAlumnos');
+        const filtro = input.value.toLowerCase();
+        const tablaBody = document.getElementById('tablaAlumnosBody');
+        const filas = tablaBody.getElementsByTagName('tr');
+
+        for (let i = 0; i < filas.length; i++) {
+            // Obtenemos la primera celda (td) que contiene el nombre
+            const celdaNombre = filas[i].getElementsByTagName('td')[0];
+
+            if (celdaNombre) {
+                const textoNombre = celdaNombre.textContent || celdaNombre.innerText;
+                // Si el nombre contiene lo escrito en el input, mostramos, si no, ocultamos
+                if (textoNombre.toLowerCase().indexOf(filtro) > -1) {
+                    filas[i].style.display = "";
+                } else {
+                    filas[i].style.display = "none";
+                }
+            }
+        }
+    }
+
+    // CHAT ALUMNO
+    async function enviarPregunta() {
+        const input = document.getElementById('inputPregunta');
+        const caja = document.getElementById('cajaChat');
+        const pregunta = input.value.trim();
+        if(!pregunta) return;
+
+        caja.innerHTML += `<div style="align-self: flex-end; background: #2563eb; color: white; padding: 10px 15px; border-radius: 10px 10px 0 10px; max-width: 80%;">${pregunta}</div>`;
+        input.value = "";
+        caja.scrollTop = caja.scrollHeight;
+
+        const idLoad = "load_" + Date.now();
+        caja.innerHTML += `<div id="${idLoad}" style="align-self: flex-start; color: #64748b; font-size: 0.8em; margin-left: 10px;">Escribiendo...</div>`;
+        caja.scrollTop = caja.scrollHeight;
+
+        try {
+            const res = await fetch('/alumno/chat-tutor', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ pregunta: pregunta })
+            });
+            const data = await res.json();
+            document.getElementById(idLoad).remove();
+            caja.innerHTML += `<div style="align-self: flex-start; background: #e2e8f0; color: #1e293b; padding: 10px 15px; border-radius: 10px 10px 10px 0; max-width: 80%;">${data.respuesta.replace(/\n/g, '<br>')}</div>`;
+        } catch (e) {
+            document.getElementById(idLoad).innerText = "Error de conexión.";
+        }
+        caja.scrollTop = caja.scrollHeight;
+    }
+
+    // MODAL PROFESOR
+    async function analizarIA(id) {
+        const modal = document.getElementById('modalAnalisis');
+        const texto = document.getElementById('textoAnalisis');
+        modal.style.display = 'flex';
+        texto.innerText = "⏳ Analizando documento con IA...";
+
+        try {
+            const res = await fetch('/profesor/analizar-tarea/' + id);
+            if (res.ok) {
+                const data = await res.json();
+                texto.innerText = data.analisis;
+            } else {
+                texto.innerText = "Error al conectar con la IA.";
+            }
+        } catch (e) {
+            texto.innerText = "Error de conexión.";
+        }
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalAnalisis').style.display = 'none';
+    }
+</script>
+</body>
+</html>
